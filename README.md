@@ -152,13 +152,31 @@ Then visit:
 
 ### Prometheus Dashboard
 
-Access the Prometheus dashboard:
+To access the Prometheus dashboard and view your application metrics:
 
+1. Port-forward the Prometheus service to your local machine:
 ```bash
 kubectl port-forward svc/prometheus-operated 9090:9090 -n monitoring
 ```
 
-Then visit: http://localhost:9090
+2. Open your browser and navigate to:
+   - Prometheus UI: http://localhost:9090
+
+3. In the Prometheus UI, you can:
+   - Go to Status -> Targets to verify your application is being scraped
+   - Go to Graph to query metrics
+   - Try these example queries:
+     - `http_requests_total` - Total number of HTTP requests
+     - `http_request_duration_seconds` - Request duration histogram
+     - `nodejs_memory_heap_used_bytes` - Node.js memory usage
+
+4. To verify your application metrics are being collected:
+   - Click on "Status" -> "Targets"
+   - Look for targets with label `app=express-app`
+   - Status should show as "UP"
+   - Last scrape time should be recent
+
+Note: Keep the port-forward running in your terminal while accessing the dashboard. To stop port-forwarding, press Ctrl+C in the terminal.
 
 ## Available Metrics
 
@@ -179,40 +197,70 @@ The `podmonitor.yaml` file configures Prometheus to scrape metrics from the appl
 - Metrics path: /metrics
 - Port: metrics (3000)
 
+## Querying Metrics in Prometheus
+
+### Basic Queries
+
+1. Access the Prometheus UI (http://localhost:9090) and click on "Graph" in the top menu
+
+2. To query `http_requests_total`:
+   - Type `http_requests_total` in the query box
+   - Click "Execute" or press Enter
+   - This shows the total count of all HTTP requests
+
+3. Filter by specific labels:
+   - `http_requests_total{method="GET"}` - Only GET requests
+   - `http_requests_total{route="/health"}` - Requests to health endpoint
+   - `http_requests_total{status="200"}` - Successful requests
+   - `http_requests_total{method="GET", route="/metrics"}` - GET requests to metrics endpoint
+
+4. Time-based queries:
+   - `rate(http_requests_total[5m])` - Requests per second over 5 minutes
+   - `increase(http_requests_total[1h])` - Total requests in the last hour
+
+### Example Queries
+
+1. Request rate by endpoint:
+```
+rate(http_requests_total[5m])
+```
+
+2. Success rate (percentage of 200 responses):
+```
+sum(rate(http_requests_total{status="200"}[5m])) / sum(rate(http_requests_total[5m])) * 100
+```
+
+3. Request duration percentiles:
+```
+histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m]))
+```
+
+4. Top 5 endpoints by request count:
+```
+topk(5, sum(http_requests_total) by (route))
+```
+
+### Tips for Querying
+
+1. Use the "Graph" tab to visualize metrics over time
+2. Use the "Table" tab to see current values
+3. Adjust the time range using the controls above the graph
+4. Use the "Add Panel" button to compare multiple metrics
+5. Click on a metric in the graph to see its exact values
+
+### Common Issues
+
+1. If you see "No data":
+   - Check if the target is "UP" in Status -> Targets
+   - Verify the metric name is correct
+   - Check if the time range is appropriate
+
+2. If the graph is empty:
+   - Try a longer time range
+   - Check if the application is receiving traffic
+   - Verify the scrape interval in podmonitor.yaml
+
 ## Troubleshooting
 
 ### Docker Issues
-1. If `docker` command is not found:
-   - Ensure Docker Desktop is installed in Applications
-   - Verify Docker Desktop is running (whale icon in menu bar)
-   - Check if Docker is in your PATH: `echo $PATH`
-   - Try adding Docker to PATH in `~/.zshrc` as shown in Prerequisites
-
-2. If pods are in `ImagePullBackOff` state:
-   - Ensure Docker Desktop is running
-   - Verify the image exists: `docker images | grep express-app`
-   - Check image name in deployment.yaml
-
-### Prometheus Issues
-1. If metrics are not visible in Prometheus:
-   - Verify the PodMonitor is applied: `kubectl get podmonitor`
-   - Check if pods have the correct labels
-   - Verify the metrics endpoint is accessible
-   - Check Prometheus targets: http://localhost:9090/targets
-
-2. If the application is not accessible:
-   - Check pod status: `kubectl get pods -l app=express-app`
-   - Check service status: `kubectl get svc express-app-service`
-   - Verify port-forwarding is working
-   - Check pod logs: `kubectl logs -l app=express-app`
-
-## Cleanup
-
-To remove the application and monitoring stack:
-
-```bash
-kubectl delete -f k8s/deployment.yaml
-kubectl delete -f k8s/service.yaml
-kubectl delete -f podmonitor.yaml
-helm uninstall prometheus -n monitoring
-``` 
+1. If `
