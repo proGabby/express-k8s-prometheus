@@ -1,0 +1,26 @@
+# podmonitor.yaml
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: express-app-monitor
+  namespace: default  # Same namespace as your app
+  labels:
+    app: express-app
+spec:
+  # Select pods with these labels
+  selector:
+    matchLabels:
+      app: express-app
+      monitoring: enabled
+  
+  # Define which endpoints to scrape
+  podMetricsEndpoints:
+  - port: metrics        # Port name from the pod spec
+    path: /metrics       # Metrics endpoint path
+    interval: 30s        # Scrape interval
+    scrapeTimeout: 10s   # Timeout for each scrape
+    
+  # Optional: Select specific namespaces
+  namespaceSelector:
+    matchNames:
+    - default

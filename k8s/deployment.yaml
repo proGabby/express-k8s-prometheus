@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: express-app
+  labels:
+    app: express-app
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: express-app
+  template:
+    metadata:
+      labels:
+        app: express-app
+        monitoring: enabled  # Important: Label for PodMonitor selection
+    spec:
+      containers:
+      - name: express-app
+        image: express-app:latest
+        ports:
+        - containerPort: 3000
+          name: http
+        - containerPort: 3000
+          name: metrics  # Expose metrics port
+        env:
+        - name: PORT
+          value: "3000"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 3000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 3000
+          initialDelaySeconds: 5
+          periodSeconds: 5
